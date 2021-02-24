@@ -1,5 +1,5 @@
 from django.shortcuts import render
-# 引入Student的类
+# 引入Projectdata的类
 from projectmanage.models import Projectdata
 # 引入JsonResponse模块
 from django.http import JsonResponse
@@ -19,6 +19,120 @@ import os
 import openpyxl
 # Create your views here.
 
+def query_projectdata(request):
+    """查询项目信息"""
+    # 接收传递过来的查询条件--- axios默认是json --- 字典类型（'inputstr'）-- data['inputstr']
+    data = json.loads(request.body.decode('utf-8'))
+    try:
+        # 使用ORM获取所有项目信息 并把对象转为字典格式
+        obj_projectdata = Projectdata.objects.filter(Q(time__icontains=data['inputstr']) |  Q(projectName__icontains=data['inputstr'])).values()
+        # 把外层的容器转为List
+        projectdata = list(obj_projectdata)
+        # 返回
+        return JsonResponse({'code':1, 'data':projectdata})
+    except Exception as e:
+        # 如果出现异常，返回
+        return JsonResponse({'code': 0, 'msg': "获取项目信息出现异常，具体错误：" + str(e)})
+
+
+def add_projectdata(request):
+    """添加学生到数据库"""
+    # 接收前端传递过来的值
+    data = json.loads(request.body.decode("utf-8"))
+    try:
+        # 添加到数据库
+        obj_projectdata = Projectdata(time=data['time'],projectName=data['projectName'],man=data['man'],
+                              days=data['days'],manDay=data['manDay'],
+                              bugNumber= data['bugNumber'], bugRate=data['bugRate'])
+        # 执行添加
+        obj_projectdata.save()
+        # 使用ORM获取所有项目信息 并把对象转为字典格式
+        obj_projectdata = Projectdata.objects.all().values()
+        # 把外层的容器转为List
+        projectdata = list(obj_projectdata)
+        # 返回
+        return JsonResponse({'code': 1, 'data': projectdata})
+    except Exception as e:
+        return JsonResponse({'code':0 , 'msg': "添加到数据库出现异常，具体原因：" + str(e)})
+
+def update_projectdata(request):
+    """修改学生到数据库"""
+    # 接收前端传递过来的值
+    data = json.loads(request.body.decode("utf-8"))
+    try:
+        # 查找到要修改的项目信息
+        obj_projectdata = Projectdata.objects.get(projectName=data['projectName'])
+        # 依次修改
+        obj_projectdata.time = data['time']
+        obj_projectdata.projectName = data['projectName']
+        obj_projectdata.man = data['man']
+        obj_projectdata.days = data['days']
+        obj_projectdata.manDay = data['manDay']
+        obj_projectdata.bugNumber = data['bugNumber']
+        obj_projectdata.bugRate = data['bugRate']
+        # 保存
+        obj_projectdata.save()
+        # 使用ORM获取所有学生信息 并把对象转为字典格式
+        obj_projectdatas = Projectdata.objects.all().values()
+        # 把外层的容器转为List
+        projectdatas = list(obj_projectdatas)
+        # 返回
+        return JsonResponse({'code': 1, 'data': projectdatas})
+    except Exception as e:
+        return JsonResponse({'code':0 , 'msg': "修改保存到数据库出现异常，具体原因：" + str(e)})
+
+def delete_projectdata(request):
+    """删除项目"""
+    # 接收前端传递过来的值
+    data = json.loads(request.body.decode("utf-8"))
+    try:
+        # 查找到要修改的项目信息
+        obj_projectdata = Projectdata.objects.get(projectName=data['projectName'])
+        # 删除
+        obj_projectdata.delete()
+        # 使用ORM获取所有学生信息 并把对象转为字典格式
+        obj_projectdatas = Projectdata.objects.all().values()
+        # 把外层的容器转为List
+        projectdatas = list(obj_projectdatas)
+        # 返回
+        return JsonResponse({'code': 1, 'data': projectdatas})
+    except Exception as e:
+        return JsonResponse({'code':0 , 'msg': "删除项目出现异常，具体原因：" + str(e)})
+
+def delete_projectdatas(request):
+    """批量删除多条项目"""
+    # 接收前端传递过来的值
+    data = json.loads(request.body.decode("utf-8"))
+    try:
+        # 遍历传递的集合
+        for one_project in data['projects']:
+            # 查询当前记录
+            obj_projectdata = Projectdata.objects.get(projectName=one_project['projectName'])
+            # 删除
+            obj_projectdata.delete()
+        # 使用ORM获取所有学生信息 并把对象转为字典格式
+        obj_projectdatas = Projectdata.objects.all().values()
+        # 把外层的容器转为List
+        projectdatas = list(obj_projectdatas)
+        # 返回
+        return JsonResponse({'code': 1, 'data': projectdatas})
+    except Exception as e:
+        return JsonResponse({'code':0 , 'msg': "删除项目出现异常，具体原因：" + str(e)})
+
+def is_exists_projectname(request):
+    """判断项目名称是否存在"""
+    # 接收传递过来的项目名称
+    data = json.loads(request.body.decode('utf-8'))
+    # 进行校验
+    try:
+        obj_projectdata = Projectdata.objects.filter(projectName=data['projectName'])
+        if obj_projectdata.count() == 0:
+            return JsonResponse({'code': 1, 'exists': False})
+        else:
+            return JsonResponse({'code': 1, 'exists': True})
+    except Exception as e:
+        return JsonResponse({'code': 0, 'msg':"校验项目名称失败，具体原因：" + str(e)})
+
 def get_projectdata(request):
     """获取所有学生的信息"""
     try:
@@ -32,13 +146,13 @@ def get_projectdata(request):
         # 如果出现异常，返回
         return JsonResponse({'code': 0, 'msg': "获取学生信息出现异常，具体错误：" + str(e)})
 
-def import_projectdata_excel(request):
+def import_projectdata_execl(request):
     """从Excel批量导入学生信息"""
     # ========1. 接收Excel文件存储到Media文件夹 =======
-    rev_file = request.FILES.get('excel')
+    rev_file = request.FILES.get('execl')
     # 判断，是否有文件
     if not rev_file:
-        return JsonResponse({'code': 0, 'msg': 'Excel文件不存在！'})
+        return JsonResponse({'code': 0, 'msg': 'Execl文件不存在！'})
     # 获得一个唯一的名字： uuid +hash
     new_name = get_random_str()
     # 准备写入的URL
@@ -61,29 +175,32 @@ def import_projectdata_excel(request):
     # 定义几个变量： success:  error: errors
     success = 0
     error = 0
-    error_snos = []
+    error_projectNames = []
 
     # 开始遍历
     for one_student in ex_students:
+        print(one_student)
         try:
-
             obj_student = Projectdata.objects.create(time=one_student['time'], projectName=one_student['projectName'], days=one_student['days'],
-                                                      man=one_student['man'],manDay=one_student['manDay'],
-                                                   bugNumber=one_student['bugNumber'],bugRate=one_student['bugRate'])
+                                                      man=one_student['man'],manDay=one_student['manDay'],bugNumber=one_student['bugNumber'],bugRate=one_student['bugRate'])
+            print(111111)
+            print(obj_student)
             # 计数
             success += 1
         except:
             # 如果失败了
             error += 1
-            error_snos.append(one_student['sno'])
+            error_projectNames.append(one_student['projectName'])
 
 
-    # 4. 返回--导入信息（成功：5，失败：4--（sno））,所有学生
-    obj_students = Projectdata.objects.all().values()
-    students = list(obj_students)
-    return JsonResponse({'code':1, 'success':success,'error':error,'errors':error_snos, 'data':students})
+    # 4. 返回--导入信息（成功：5，失败：4--（projectNames））,所有学生
+    obj_projectdatas = Projectdata.objects.all().values()
+    projectdatas = list(obj_projectdatas)
+    return JsonResponse({'code':1, 'success':success,'error':error,'errors':error_projectNames, 'data':projectdatas})
 
-def export_projectdata_excel(request):
+
+
+def export_projectdata_execl(request):
     """导出数据到excel"""
     # 获取所有的学生信息
     obj_students = Projectdata.objects.all().values()
@@ -115,7 +232,6 @@ def write_to_excel(data:list, path:str):
             sheet.cell(row=index + 1, column=k+ 1, value=str(item[v]))
     # 写入到文件
     workbook.save(path)
-
 
 def get_random_str():
     #获取uuid的随机数
