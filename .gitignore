@@ -5,7 +5,6 @@
 # IntelliJ project files
 
 .idea
-*/reports
 */media
 sis/reports
 */__pycache__

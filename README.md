@@ -16,6 +16,10 @@ Django==3.1.5
 1、进入StudentV4BE根目录
 2、terminal运行python manage.py runserver 127.0.0.1:8000
 
+#备注
+1.目前导入的execl可以用media里面可导入的execl.xlsx文件
+2.目前只实现了单页面下增删改查、导入、导出翻页功能
+
 
 
 
